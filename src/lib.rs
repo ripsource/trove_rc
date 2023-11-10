@@ -33,8 +33,8 @@ mod barter {
         new_trade_proposal => Free;
         partner_deposit_tokens => Free;
         partner_deposit_nfts => Free;
-        partner_claims_creator_assets => Usd(2.into());
-        creator_claims_partner_assets => Usd(2.into());
+        partner_claims_creator_assets => Xrd(20.into());
+        creator_claims_partner_assets => Xrd(20.into());
         creator_cancel => Free;
         partner_cancel => Free;
         burn_creator_badge => Free;
@@ -65,16 +65,19 @@ mod barter {
         a_vault_key: ResourceAddress,
         a_vault_key_id: NonFungibleLocalId,
         a_vault_key_global: NonFungibleGlobalId,
+
         // partner assets and badge (optional)
         partner_vaults: HashMap<ResourceAddress, Vault>,
         badge_partner: Option<ResourceAddress>,
         badge_partner_local: Option<NonFungibleLocalId>,
+
         // state record of expected assets from partner
         expected_nfts: Vec<NonFungibleGlobalId>,
         expected_tokens: HashMap<ResourceAddress, Decimal>,
+
         // resource manager for burning badges
         proposal_resource_manager: ResourceManager,
-        // partner_badge_manager: Option<ResourceManager>,
+
         // state bools for validation
         tokens_validated: bool,
         nfts_validated: bool,
@@ -88,7 +91,7 @@ mod barter {
             // Just a random name that users can give their swaps
             custom_trade_name: String,
             // Optional to add a partner by including their account address - this triggers various access controls,
-            // including an 'anti-pattern' deposit of a badge to the partner address automatically.
+            // including an 'anti-pattern' airdrop deposit of a badge to the partner address automatically.
             partner: Option<ComponentAddress>,
             // Optional to include a variety of fungibles in your offer
             a_tokens: Option<Vec<Bucket>>,
@@ -143,19 +146,17 @@ mod barter {
                 );
             
             // end of limits checking
-
+           
             let mut a_key: NonFungibleBucket;
             let mut a_token_deposits: HashMap<ResourceAddress, Decimal> = HashMap::new();
             let mut user_a_vaults = HashMap::new();
-// user_a_vaults: HashMap<ResourceAddress, Vault> =
+
+            //Deposit all creator fungible assets in map of vaults
             if a_tokens.is_some() {
                 let a_token_buckets = a_tokens.unwrap();
-
-
                 for i in a_token_buckets.iter() {
                     a_token_deposits.insert(i.resource_address(), i.amount());
                 }
-
                 for bucket in a_token_buckets.into_iter() {
                     user_a_vaults
                         .entry(bucket.resource_address())
@@ -163,6 +164,9 @@ mod barter {
                         .put(bucket)
                 }
             }
+
+
+            //Deposit all creator non-fungible assets in map of vaults
 
             let mut a_nft_deposits: Vec<NonFungibleGlobalId> = Vec::new();
 
@@ -203,20 +207,17 @@ mod barter {
             let mut badge_option = None as Option<ResourceAddress>;
             let mut badge_local_id = None as Option<NonFungibleLocalId>;
 
-            // Creator's badge containing metadata info on the swap proposal
+            
 
             let key_custom_name = String::from("TROVE Key: ");
-            // let key_partner_custom_name = String::from("TROVE Partner Key: ");
-            
+           
             let key_name = String::from(&custom_trade_name.to_string());
-            // let key_name_nft = key_name.clone();
-            // let partner_key_custom_label = "Trove Request Key: ".to_string() + &key_name_nft;
+          
             let key_custom_label = key_custom_name + &key_name;
-            // let key_custom_partner_label = key_partner_custom_name + &key_name;
+            
             let key_name_clone = key_custom_label.clone();
-            // let escrow_name: StringNonFungibleLocalId = StringNonFungibleLocalId:: (key_custom_name).unwrap();
-            // StringNonFungibleLocalId::new(key_custom_name);
-            // key_custom_name.to_owned() ;
+            
+            // Optional logic that either sets up just a creator badge or also the partner badge if 'private' swap selected 
 
             if !partner.is_some() {
             a_key = ResourceBuilder::new_string_non_fungible::<Escroceipt>(OwnerRole::None)
@@ -313,7 +314,7 @@ mod barter {
                 let partner_local_quick_id = NonFungibleLocalId::String("Trove_Partner_Key".try_into().unwrap());
                 let partner_nft_badge = a_key.take_non_fungible(&partner_local_quick_id);
 
-
+                
                 let partner_nft_badge_resource = partner_nft_badge.resource_address();
                 let partner_nft_badge_local = partner_nft_badge.as_non_fungible().non_fungible_local_id();
                 let badge_bucket: Vec<Bucket> = vec![partner_nft_badge.into()];
@@ -343,7 +344,7 @@ mod barter {
             let partner_vaults: HashMap<ResourceAddress, Vault> = HashMap::new();
 
           
-            
+         
 
             Runtime::emit_event(ComponentCreated {
                 component: component_address,
@@ -394,7 +395,7 @@ mod barter {
             (barter_component, a_key)
         }
 
-        // used for testing
+        // getter used for testing
         
         pub fn get_badge(&mut self) -> (ResourceAddress, NonFungibleLocalId, NonFungibleGlobalId) {
             (
